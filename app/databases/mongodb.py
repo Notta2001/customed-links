@@ -3,6 +3,10 @@ from pymongo import MongoClient
 from config import MongoDBConfig
 from uuid import uuid4
 import time
+from datetime import datetime
+from matplotlib import pyplot as plt
+from matplotlib import dates as mpl_dates
+from app.firebase.firebase import FireBase
 
 
 class MongoDB:
@@ -15,6 +19,8 @@ class MongoDB:
         self.db = self.client[MongoDBConfig.DATABASE]
         self.links_collection = self.db[MongoDBConfig.LINKS_COLLECTION]
         self.urls_collection = self.db[MongoDBConfig.URLS_COLLECTION]
+        self.view_logs_collection = self.db[MongoDBConfig.VIEW_LOGS_IMAGES_COLLECTION]
+        self.fb = FireBase()
 
     def create_customed_link(self, link, nonce):
         uuid = str(uuid4())
@@ -74,7 +80,36 @@ class MongoDB:
             else:
                 self.urls_collection.update_one({"url": key}, {"$set": {"view_logs.{}".format(
                     str(current_time_stamp)): value, "last_update_at": current_time_stamp}})
+            _id = self.urls_collection.find_one({"url": key}, {'_id': 1})
+            self.insert_image(key, str(_id['_id']))
 
-    def get_views_log(self, url): 
-        data = self.urls_collection.find_one({"url": url}, {'view_logs': 1, '_id': 0} )
+    def get_views_log(self, url):
+        data = self.urls_collection.find_one(
+            {"url": url}, {'view_logs': 1, '_id': 0})
         return data
+
+    def insert_image(self, url, _id):
+        data = self.get_views_log(url)
+
+        X = [datetime.fromtimestamp(int(view_log[0]))
+             for view_log in data['view_logs'].items()]
+        Y = [view_log[1] for view_log in data['view_logs'].items()]
+
+        color = "red"
+        if Y[0] <= Y[-1]:
+            color = "green"
+
+        plt.plot_date(X, Y, linestyle='solid', color=color)
+        plt.gcf().autofmt_xdate()
+        date_format = mpl_dates.DateFormatter('%Y-%m-%d %H:%M:%S')
+        plt.gca().xaxis.set_major_formatter(date_format)
+        plt.title("View logs of {}".format(url))
+        plt.xlabel("Date")
+        plt.ylabel("Views")
+        plt.tight_layout()
+        plt.savefig('app/databases/images/{}.png'.format(_id))
+        plt.clf()
+
+        public_url = self.fb.add_image('{}.png'.format(_id))
+
+        self.view_logs_collection.update_one({"url": url}, {"$set": {"link": public_url}}, upsert=True)

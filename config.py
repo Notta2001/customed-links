@@ -12,3 +12,4 @@ class MongoDBConfig:
   DATABASE = os.environ.get("MONGO_DBS") or ""
   LINKS_COLLECTION = os.environ.get("MONGO_LINKS_COLLECTION") or ""
   URLS_COLLECTION = os.environ.get("MONGO_URLS_COLLECTION") or ""
+  VIEW_LOGS_IMAGES_COLLECTION =os.environ.get("MONGO_VIEW_LOGS_COLLECTION") or ""

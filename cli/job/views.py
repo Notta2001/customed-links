@@ -6,7 +6,7 @@ from app.databases.mongodb import MongoDB
 @click.command(context_settings=dict(help_option_names=['-h', '--help']))
 def views_count():
     _db = MongoDB()
-    next_synced_timestamp = int(time.time()) + 60
+    next_synced_timestamp = int(time.time()) + 15
     while True:
         try:
             current_time = int(time.time())
